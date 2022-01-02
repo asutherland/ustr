@@ -561,6 +561,8 @@ pub struct Bins(pub(crate) [Mutex<StringCache>; NUM_BINS]);
 
 #[cfg(test)]
 mod tests {
+    use std::cmp::Ordering;
+
     #[test]
     fn it_works() {
         use super::ustr as u;
@@ -797,14 +799,25 @@ mod tests {
     #[test]
     fn ord() {
         use super::ustr;
-        let u_apple = ustr("apple");
         let u_bravo = ustr("bravo");
         let u_charlie = ustr("charlie");
+        // We intentionally make apple not be interned in lexicographic order.
+        let u_apple = ustr("apple");
         let u_delta = ustr("delta");
 
-        let mut v = vec![u_delta, u_bravo, u_charlie, u_apple];
-        v.sort();
-        assert_eq!(v, vec![u_apple, u_bravo, u_charlie, u_delta]);
+        assert_eq!(Ordering::Less, u_apple.cmp(&u_bravo));
+        assert_eq!(Ordering::Equal, u_apple.cmp(&u_apple));
+        assert_eq!(Ordering::Greater, u_bravo.cmp(&u_apple));
+
+        assert_eq!(Ordering::Less, u_apple.cmp(&u_charlie));
+        assert_eq!(Ordering::Greater, u_charlie.cmp(&u_apple));
+
+        assert_eq!(Ordering::Less, u_apple.cmp(&u_delta));
+        assert_eq!(Ordering::Greater, u_delta.cmp(&u_apple));
+
+        // Note: Vec::sort used to be used here, but since the Ord trait extends
+        // the PartialOrd trait, there's no guarantee Ord will be used.  And in
+        // practice, only PartialOrd ended up getting used here.
     }
 
     fn takes_into_str<'a, S: Into<&'a str>>(s: S) -> &'a str {
